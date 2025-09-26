@@ -38,20 +38,56 @@ function check_raylib()
     os.chdir("../")
 end
 
+function get_latest_box2d_version()
+    -- Attempt to get the latest version from GitHub API
+    -- If this fails due to network restrictions, fallback to known latest version
+    local latest_version = "3.1.1" -- Known latest version as fallback
+    
+    print("Attempting to fetch latest Box2D version...")
+    local result_str, response_code = http.get("https://api.github.com/repos/erincatto/box2d/releases/latest")
+    if response_code == 200 and result_str then
+        -- Parse JSON to extract tag_name
+        local tag_match = string.match(result_str, '"tag_name"%s*:%s*"v([^"]+)"')
+        if tag_match then
+            latest_version = tag_match
+            print("Latest Box2D version found: " .. latest_version)
+        else
+            print("Could not parse version from API response, using fallback: " .. latest_version)
+        end
+    else
+        print("Could not fetch latest version from GitHub API (response code: " .. tostring(response_code) .. "), using fallback: " .. latest_version)
+    end
+    
+    return latest_version
+end
+
 function check_box2d()
     os.chdir("external")
-    if(os.isdir("box2d-3.0.0") == false) then
-        if(not os.isfile("box2d-3.0.0.zip")) then
-            print("Box2D not found, downloading from github")
-            local result_str, response_code = http.download("https://github.com/erincatto/box2d/archive/refs/tags/v3.0.0.zip", "box2d-3.0.0.zip", {
+    
+    -- Get the latest version dynamically
+    local box2d_version = get_latest_box2d_version()
+    local box2d_folder = "box2d-" .. box2d_version
+    local box2d_zip = box2d_folder .. ".zip"
+    
+    if(os.isdir(box2d_folder) == false) then
+        if(not os.isfile(box2d_zip)) then
+            print("Box2D v" .. box2d_version .. " not found, downloading from github")
+            local download_url = "https://github.com/erincatto/box2d/archive/refs/tags/v" .. box2d_version .. ".zip"
+            local result_str, response_code = http.download(download_url, box2d_zip, {
                 progress = download_progress,
                 headers = { "From: Premake", "Referer: Premake" }
             })
         end
         print("Unzipping to " ..  os.getcwd())
-        zip.extract("box2d-3.0.0.zip", os.getcwd())
-        os.remove("box2d-3.0.0.zip")
+        zip.extract(box2d_zip, os.getcwd())
+        os.remove(box2d_zip)
+    else
+        print("Box2D v" .. box2d_version .. " already exists")
     end
+    
+    -- Update the global box2d_dir variable to point to the correct version
+    box2d_dir = "external/" .. box2d_folder
+    
     os.chdir("../")
 end
 
@@ -112,7 +148,7 @@ raylib_dir = "external/raylib-master"
 
 -- if you don't want to download box2d, then set this to false, and set the box2d dir to where you want box2d to be pulled from, must be full sources.
 downloadBox2D = true
-box2d_dir = "external/box2d-3.0.0"
+box2d_dir = "external/box2d-3.1.1"  -- This will be updated dynamically by check_box2d()
 
 workspaceName = 'MyGame'
 baseName = path.getbasename(path.getdirectory(os.getcwd()));
