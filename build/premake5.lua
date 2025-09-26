@@ -316,9 +316,22 @@ if (downloadBox2D) then
         language "C"
         targetdir "../bin/%{cfg.buildcfg}"
         
+        -- Use C11 standard for static_assert support
+        cdialect "C11"
+        
         filter "action:vs*"
             defines{"_WINSOCK_DEPRECATED_NO_WARNINGS", "_CRT_SECURE_NO_WARNINGS"}
             characterset ("Unicode")
+            -- MSVC compatibility: Force C compilation
+            buildoptions { "/TC" }
+            -- For MSVC, define _Static_assert as a no-op since MSVC doesn't fully support C11
+            defines { "_Static_assert(x,y)=" }
+        
+        filter "system:not windows"
+            -- For non-Windows systems, ensure C11 support and define required macros
+            buildoptions { "-std=c11" }
+            defines { "_GNU_SOURCE", "_POSIX_C_SOURCE=200809L" }
+        
         filter{}
         
         includedirs {box2d_dir, box2d_dir .. "/include", box2d_dir .. "/src", box2d_dir .. "/extern/simde" }
